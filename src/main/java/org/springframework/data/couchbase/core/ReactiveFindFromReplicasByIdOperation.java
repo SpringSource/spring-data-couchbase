@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors
+ * Copyright 2012-2021 the original author or authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,11 @@ import reactor.core.publisher.Mono;
 import java.util.Collection;
 
 import org.springframework.data.couchbase.core.support.AnyIdReactive;
-import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.InCollection;
+import org.springframework.data.couchbase.core.support.InScope;
+import org.springframework.data.couchbase.core.support.WithGetAnyReplicaOptions;
+
+import com.couchbase.client.java.kv.GetAnyReplicaOptions;
 
 public interface ReactiveFindFromReplicasByIdOperation {
 
@@ -35,11 +39,18 @@ public interface ReactiveFindFromReplicasByIdOperation {
 
 	}
 
-	interface FindFromReplicasByIdWithCollection<T> extends TerminatingFindFromReplicasById<T>, WithCollection<T> {
-
-		TerminatingFindFromReplicasById<T> inCollection(String collection);
+	interface FindFromReplicasByIdWithOptions<T> extends TerminatingFindFromReplicasById<T>, WithGetAnyReplicaOptions<T> {
+		TerminatingFindFromReplicasById<T> withOptions(GetAnyReplicaOptions options);
 	}
 
-	interface ReactiveFindFromReplicasById<T> extends FindFromReplicasByIdWithCollection<T> {}
+	interface FindFromReplicasByIdInCollection<T> extends FindFromReplicasByIdWithOptions<T>, InCollection<T> {
+		FindFromReplicasByIdWithOptions<T> inCollection(String collection);
+	}
+
+	interface FindFromReplicasByIdInScope<T> extends FindFromReplicasByIdInCollection<T>, InScope<T> {
+		FindFromReplicasByIdInCollection<T> inScope(String scope);
+	}
+
+	interface ReactiveFindFromReplicasById<T> extends FindFromReplicasByIdInScope<T> {}
 
 }

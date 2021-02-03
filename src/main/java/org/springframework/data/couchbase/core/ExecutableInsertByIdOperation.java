@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors
+ * Copyright 2012-2021 the original author or authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,13 @@ package org.springframework.data.couchbase.core;
 import java.time.Duration;
 import java.util.Collection;
 
+import org.springframework.data.couchbase.core.support.InCollection;
+import org.springframework.data.couchbase.core.support.InScope;
 import org.springframework.data.couchbase.core.support.OneAndAllEntity;
-import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithInsertOptions;
 
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
+import com.couchbase.client.java.kv.InsertOptions;
 import com.couchbase.client.java.kv.PersistTo;
 import com.couchbase.client.java.kv.ReplicateTo;
 
@@ -39,16 +42,24 @@ public interface ExecutableInsertByIdOperation {
 
 	}
 
-	interface InsertByIdWithCollection<T> extends TerminatingInsertById<T>, WithCollection<T> {
-
-		TerminatingInsertById<T> inCollection(String collection);
+	interface InsertByIdWithOptions<T>
+			extends ExecutableInsertByIdOperation.TerminatingInsertById<T>, WithInsertOptions<T> {
+		ExecutableInsertByIdOperation.TerminatingInsertById<T> withOptions(InsertOptions options);
 	}
 
-	interface InsertByIdWithDurability<T> extends InsertByIdWithCollection<T>, WithDurability<T> {
+	interface InsertByIdInCollection<T> extends InsertByIdWithOptions<T>, InCollection<T> {
+		InsertByIdWithOptions<T> inCollection(String collection);
+	}
 
-		InsertByIdWithCollection<T> withDurability(DurabilityLevel durabilityLevel);
+	interface InsertByIdInScope<T> extends InsertByIdInCollection<T>, InScope<T> {
+		InsertByIdInCollection<T> inScope(String scope);
+	}
 
-		InsertByIdWithCollection<T> withDurability(PersistTo persistTo, ReplicateTo replicateTo);
+	interface InsertByIdWithDurability<T> extends InsertByIdInScope<T>, WithDurability<T> {
+
+		InsertByIdInCollection<T> withDurability(DurabilityLevel durabilityLevel);
+
+		InsertByIdInCollection<T> withDurability(PersistTo persistTo, ReplicateTo replicateTo);
 
 	}
 

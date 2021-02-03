@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors
+ * Copyright 2012-2021 the original author or authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,14 +22,16 @@ import java.util.stream.Stream;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.data.couchbase.core.query.Query;
 import org.springframework.data.couchbase.core.query.QueryCriteriaDefinition;
+import org.springframework.data.couchbase.core.support.InCollection;
+import org.springframework.data.couchbase.core.support.InScope;
 import org.springframework.data.couchbase.core.support.OneAndAll;
-import org.springframework.data.couchbase.core.support.WithCollection;
 import org.springframework.data.couchbase.core.support.WithConsistency;
 import org.springframework.data.couchbase.core.support.WithDistinct;
-import org.springframework.data.couchbase.core.support.WithProjection;
 import org.springframework.data.couchbase.core.support.WithQuery;
+import org.springframework.data.couchbase.core.support.WithQueryOptions;
 import org.springframework.lang.Nullable;
 
+import com.couchbase.client.java.query.QueryOptions;
 import com.couchbase.client.java.query.QueryScanConsistency;
 
 public interface ExecutableFindByQueryOperation {
@@ -137,19 +139,20 @@ public interface ExecutableFindByQueryOperation {
 
 	}
 
-	interface FindByQueryInCollection<T> extends FindByQueryWithQuery<T>, WithCollection<T> {
+	interface FindByQueryWithOptions<T> extends FindByQueryWithQuery<T>, WithQueryOptions<T> {
+		TerminatingFindByQuery<T> withOptions(QueryOptions options);
+	}
 
-		/**
-		 * Allows to override the default scan consistency.
-		 *
-		 * @param collection the collection to use for this query.
-		 */
-		FindByQueryWithQuery<T> inCollection(String collection);
+	interface FindByQueryInCollection<T> extends FindByQueryWithOptions<T>, InCollection<T> {
+		FindByQueryWithOptions<T> inCollection(String collection);
+	}
 
+	interface FindByQueryInScope<T> extends FindByQueryInCollection<T>, InScope<T> {
+		FindByQueryInCollection<T> inScope(String scope);
 	}
 
 	@Deprecated
-	interface FindByQueryConsistentWith<T> extends FindByQueryInCollection<T> {
+	interface FindByQueryConsistentWith<T> extends FindByQueryInScope<T> {
 
 		/**
 		 * Allows to override the default scan consistency.
@@ -157,7 +160,7 @@ public interface ExecutableFindByQueryOperation {
 		 * @param scanConsistency the custom scan consistency to use for this query.
 		 */
 		@Deprecated
-		FindByQueryInCollection<T> consistentWith(QueryScanConsistency scanConsistency);
+		FindByQueryInScope<T> consistentWith(QueryScanConsistency scanConsistency);
 
 	}
 

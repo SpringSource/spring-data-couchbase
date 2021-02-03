@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors
+ * Copyright 2012-2021 the original author or authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,14 @@ package org.springframework.data.couchbase.core;
 import java.util.Collection;
 import java.util.List;
 
+import org.springframework.data.couchbase.core.support.InCollection;
+import org.springframework.data.couchbase.core.support.InScope;
 import org.springframework.data.couchbase.core.support.OneAndAllId;
-import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithRemoveOptions;
 
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
 import com.couchbase.client.java.kv.PersistTo;
+import com.couchbase.client.java.kv.RemoveOptions;
 import com.couchbase.client.java.kv.ReplicateTo;
 
 public interface ExecutableRemoveByIdOperation {
@@ -37,16 +40,23 @@ public interface ExecutableRemoveByIdOperation {
 
 	}
 
-	interface RemoveByIdWithCollection extends TerminatingRemoveById, WithCollection<RemoveResult> {
-
-		TerminatingRemoveById inCollection(String collection);
+	interface RemoveByIdWithOptions extends TerminatingRemoveById, WithRemoveOptions<RemoveResult> {
+		TerminatingRemoveById withOptions(RemoveOptions options);
 	}
 
-	interface RemoveByIdWithDurability extends RemoveByIdWithCollection, WithDurability<RemoveResult> {
+	interface RemoveByIdInCollection extends RemoveByIdWithOptions, InCollection<Object> {
+		RemoveByIdWithOptions inCollection(String collection);
+	}
 
-		RemoveByIdWithCollection withDurability(DurabilityLevel durabilityLevel);
+	interface RemoveByIdInScope extends RemoveByIdInCollection, InScope<Object> {
+		RemoveByIdInCollection inScope(String scope);
+	}
 
-		RemoveByIdWithCollection withDurability(PersistTo persistTo, ReplicateTo replicateTo);
+	interface RemoveByIdWithDurability extends RemoveByIdInScope, WithDurability<RemoveResult> {
+
+		RemoveByIdInCollection withDurability(DurabilityLevel durabilityLevel);
+
+		RemoveByIdInCollection withDurability(PersistTo persistTo, ReplicateTo replicateTo);
 
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -119,6 +123,33 @@ public class ReactiveCouchbaseRepositoryQueryIntegrationTests extends JavaIntegr
 		user.setVersion(0);
 		userRepository.save(user).block();
 		userRepository.delete(user).block();
+	}
+
+	@Test
+	void limitTest() {
+		Airport vie = new Airport("airports::vie", "vie", "loww");
+		airportRepository.save(vie).block();
+		airportRepository.save(vie.withId(UUID.randomUUID().toString())).block();
+		airportRepository.findAll().collectList().block(); // findAll has QueryScanConsistency;
+		Mono<Airport> airport = airportRepository.findPolicySnapshotByPolicyIdAndEffectiveDateTime("any", 0);
+		System.out.println("------------------------------");
+		System.out.println(airport.block());
+		System.out.println("------------------------------");
+		Flux<Airport> airports = airportRepository.findPolicySnapshotAll();
+		System.out.println(airports.collectList().block());
+		System.out.println("------------------------------");
+		Mono<Airport> ap = getPolicyByIdAndEffectiveDateTime("x", Instant.now());
+		System.out.println(ap.block());
+
+	}
+
+	public Mono<Airport> getPolicyByIdAndEffectiveDateTime(String policyId, Instant effectiveDateTime) {
+		return airportRepository
+				.findPolicySnapshotByPolicyIdAndEffectiveDateTime(policyId, effectiveDateTime.toEpochMilli())
+				// .map(Airport::getEntity)
+				.doOnError(
+						error -> System.out.println("MSG='Exception happened while retrieving Policy by Id and effectiveDateTime', "
+								+ "policyId={}, effectiveDateTime={}"));
 	}
 
 	@Test

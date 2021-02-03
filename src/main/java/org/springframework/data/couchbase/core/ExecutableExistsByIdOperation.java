@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors
+ * Copyright 2012-2021 the original author or authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,12 @@ package org.springframework.data.couchbase.core;
 import java.util.Collection;
 import java.util.Map;
 
+import org.springframework.data.couchbase.core.support.InCollection;
+import org.springframework.data.couchbase.core.support.InScope;
 import org.springframework.data.couchbase.core.support.OneAndAllExists;
-import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithExistsOptions;
+
+import com.couchbase.client.java.kv.ExistsOptions;
 
 public interface ExecutableExistsByIdOperation {
 
@@ -48,16 +52,18 @@ public interface ExecutableExistsByIdOperation {
 
 	}
 
-	interface ExistsByIdWithCollection extends TerminatingExistsById, WithCollection {
-
-		/**
-		 * Allows to specify a different collection than the default one configured.
-		 *
-		 * @param collection the collection to use in this scope.
-		 */
-		TerminatingExistsById inCollection(String collection);
+	interface ExistsByIdWithOptions<T> extends TerminatingExistsById, WithExistsOptions<T> {
+		TerminatingExistsById withOptions(ExistsOptions options);
 	}
 
-	interface ExecutableExistsById extends ExistsByIdWithCollection {}
+	interface ExistsByIdInCollection<T> extends ExistsByIdWithOptions<T>, InCollection<T> {
+		ExistsByIdWithOptions<T> inCollection(String collection);
+	}
+
+	interface ExistsByIdInScope<T> extends ExistsByIdInCollection<T>, InScope<T> {
+		ExistsByIdInCollection<T> inScope(String scope);
+	}
+
+	interface ExecutableExistsById extends ExistsByIdInScope {}
 
 }

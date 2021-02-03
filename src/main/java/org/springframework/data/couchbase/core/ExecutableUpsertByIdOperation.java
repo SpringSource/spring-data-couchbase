@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors
+ * Copyright 2012-2021 the original author or authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,15 @@ package org.springframework.data.couchbase.core;
 import java.time.Duration;
 import java.util.Collection;
 
+import org.springframework.data.couchbase.core.support.InCollection;
+import org.springframework.data.couchbase.core.support.InScope;
 import org.springframework.data.couchbase.core.support.OneAndAllEntity;
-import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithUpsertOptions;
 
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
 import com.couchbase.client.java.kv.PersistTo;
 import com.couchbase.client.java.kv.ReplicateTo;
+import com.couchbase.client.java.kv.UpsertOptions;
 
 public interface ExecutableUpsertByIdOperation {
 
@@ -39,22 +42,28 @@ public interface ExecutableUpsertByIdOperation {
 
 	}
 
-	interface UpsertByIdWithCollection<T> extends TerminatingUpsertById<T>, WithCollection<T> {
-
-		TerminatingUpsertById<T> inCollection(String collection);
+	interface UpsertByIdWithOptions<T> extends TerminatingUpsertById<T>, WithUpsertOptions<T> {
+		TerminatingUpsertById<T> withOptions(UpsertOptions options);
 	}
 
-	interface UpsertByIdWithDurability<T> extends UpsertByIdWithCollection<T>, WithDurability<T> {
+	interface UpsertByIdInCollection<T> extends UpsertByIdWithOptions<T>, InCollection<T> {
+		UpsertByIdWithOptions<T> inCollection(String collection);
+	}
 
-		UpsertByIdWithCollection<T> withDurability(DurabilityLevel durabilityLevel);
+	interface UpsertByIdInScope<T> extends UpsertByIdInCollection<T>, InScope<T> {
+		UpsertByIdInCollection<T> inScope(String scope);
+	}
 
-		UpsertByIdWithCollection<T> withDurability(PersistTo persistTo, ReplicateTo replicateTo);
+	interface UpsertByIdWithDurability<T> extends UpsertByIdInScope<T>, WithDurability<T> {
+
+		UpsertByIdInScope<T> withDurability(DurabilityLevel durabilityLevel);
+
+		UpsertByIdInScope<T> withDurability(PersistTo persistTo, ReplicateTo replicateTo);
 
 	}
 
 	interface UpsertByIdWithExpiry<T> extends UpsertByIdWithDurability<T>, WithExpiry<T> {
 
-		@Override
 		UpsertByIdWithDurability<T> withExpiry(Duration expiry);
 	}
 

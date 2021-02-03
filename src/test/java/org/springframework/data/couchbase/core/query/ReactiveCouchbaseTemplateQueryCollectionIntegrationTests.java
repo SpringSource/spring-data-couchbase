@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.data.couchbase.core;
+package org.springframework.data.couchbase.core.query;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -36,8 +36,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.couchbase.core.query.Query;
-import org.springframework.data.couchbase.core.query.QueryCriteria;
+import org.springframework.data.couchbase.core.ReactiveCouchbaseTemplate;
+import org.springframework.data.couchbase.core.RemoveResult;
 import org.springframework.data.couchbase.domain.Address;
 import org.springframework.data.couchbase.domain.Airport;
 import org.springframework.data.couchbase.domain.Course;
@@ -74,9 +74,10 @@ import com.couchbase.client.java.query.QueryScanConsistency;
  * @author Michael Reiche
  */
 @IgnoreWhen(missesCapabilities = { Capabilities.QUERY, Capabilities.COLLECTIONS }, clusterTypes = ClusterType.MOCKED)
-class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIntegrationTests {
+class ReactiveCouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIntegrationTests {
 
 	Airport vie = new Airport("airports::vie", "vie", "loww");
+	ReactiveCouchbaseTemplate template = reactiveCouchbaseTemplate;
 
 	@BeforeAll
 	public static void beforeAll() {
@@ -382,14 +383,13 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 	public void existsById() { // 1
 		GetOptions options = GetOptions.getOptions().timeout(Duration.ofSeconds(10));
 		ExistsOptions existsOptions = ExistsOptions.existsOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(scopeName).inCollection(collectionName)
-				.one(vie);
+		Airport saved = template.insertById(Airport.class).inScope(scopeName).inCollection(collectionName).one(vie).block();
 		try {
-			Boolean exists = couchbaseTemplate.existsById().inScope(scopeName).inCollection(collectionName)
-					.withOptions(existsOptions).one(saved.getId());
+			Boolean exists = template.existsById().inScope(scopeName).inCollection(collectionName).withOptions(existsOptions)
+					.one(saved.getId()).block();
 			assertTrue(exists, "Airport should exist: " + saved.getId());
 		} finally {
-			couchbaseTemplate.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId());
+			template.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId()).block();
 		}
 	}
 
@@ -397,57 +397,52 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 	@Disabled // needs analytics data set
 	public void findByAnalytics() { // 2
 		AnalyticsOptions options = AnalyticsOptions.analyticsOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(scopeName).inCollection(collectionName)
-				.one(vie);
+		Airport saved = template.insertById(Airport.class).inScope(scopeName).inCollection(collectionName).one(vie).block();
 		try {
-			List<Airport> found = couchbaseTemplate.findByAnalytics(Airport.class).inScope(scopeName)
-					.inCollection(collectionName).withOptions(options).all();
+			List<Airport> found = template.findByAnalytics(Airport.class).inScope(scopeName).inCollection(collectionName)
+					.withOptions(options).all().collectList().block();
 			assertEquals(saved, found);
 		} finally {
-			couchbaseTemplate.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId());
+			template.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId()).block();
 		}
 	}
 
 	@Test
 	public void findById() { // 3
 		GetOptions options = GetOptions.getOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(scopeName).inCollection(collectionName)
-				.one(vie);
+		Airport saved = template.insertById(Airport.class).inScope(scopeName).inCollection(collectionName).one(vie).block();
 		try {
-			Airport found = couchbaseTemplate.findById(Airport.class).inScope(scopeName).inCollection(collectionName)
-					.withOptions(options).one(saved.getId());
+			Airport found = template.findById(Airport.class).inScope(scopeName).inCollection(collectionName)
+					.withOptions(options).one(saved.getId()).block();
 			assertEquals(saved, found);
 		} finally {
-			couchbaseTemplate.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId());
+			template.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId()).block();
 		}
 	}
 
 	@Test
 	public void findByQuery() { // 4
 		QueryOptions options = QueryOptions.queryOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(scopeName).inCollection(collectionName)
-				.one(vie);
+		Airport saved = template.insertById(Airport.class).inScope(scopeName).inCollection(collectionName).one(vie).block();
 		try {
-			List<Airport> found = couchbaseTemplate.findByQuery(Airport.class)
-					.withConsistency(QueryScanConsistency.REQUEST_PLUS).inScope(scopeName).inCollection(collectionName)
-					.withOptions(options).all();
+			List<Airport> found = template.findByQuery(Airport.class).withConsistency(QueryScanConsistency.REQUEST_PLUS)
+					.inScope(scopeName).inCollection(collectionName).withOptions(options).all().collectList().block();
 			assertEquals(saved.getId(), found.get(0).getId());
 		} finally {
-			couchbaseTemplate.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId());
+			template.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId()).block();
 		}
 	}
 
 	@Test
 	public void findFromReplicasById() { // 5
 		GetAnyReplicaOptions options = GetAnyReplicaOptions.getAnyReplicaOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(scopeName).inCollection(collectionName)
-				.one(vie);
+		Airport saved = template.insertById(Airport.class).inScope(scopeName).inCollection(collectionName).one(vie).block();
 		try {
-			Airport found = couchbaseTemplate.findFromReplicasById(Airport.class).inScope(scopeName)
-					.inCollection(collectionName).withOptions(options).any(saved.getId());
+			Airport found = template.findFromReplicasById(Airport.class).inScope(scopeName).inCollection(collectionName)
+					.withOptions(options).any(saved.getId()).block();
 			assertEquals(saved, found);
 		} finally {
-			couchbaseTemplate.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId());
+			template.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId()).block();
 		}
 	}
 
@@ -455,35 +450,34 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 	public void insertById() { // 6
 		InsertOptions options = InsertOptions.insertOptions().timeout(Duration.ofSeconds(10));
 		GetOptions getOptions = GetOptions.getOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(scopeName).inCollection(collectionName)
-				.withOptions(options).one(vie.withId(UUID.randomUUID().toString()));
+		Airport saved = template.insertById(Airport.class).inScope(scopeName).inCollection(collectionName)
+				.withOptions(options).one(vie.withId(UUID.randomUUID().toString())).block();
 		try {
-			Airport found = couchbaseTemplate.findById(Airport.class).inScope(scopeName).inCollection(collectionName)
-					.withOptions(getOptions).one(saved.getId());
+			Airport found = template.findById(Airport.class).inScope(scopeName).inCollection(collectionName)
+					.withOptions(getOptions).one(saved.getId()).block();
 			assertEquals(saved, found);
 		} finally {
-			couchbaseTemplate.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId());
+			template.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId()).block();
 		}
 	}
 
 	@Test
 	public void removeById() { // 7
 		RemoveOptions options = RemoveOptions.removeOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(scopeName).inCollection(collectionName)
-				.one(vie);
-		RemoveResult removeResult = couchbaseTemplate.removeById().inScope(scopeName).inCollection(collectionName)
-				.withOptions(options).one(saved.getId());
+		Airport saved = template.insertById(Airport.class).inScope(scopeName).inCollection(collectionName).one(vie).block();
+		RemoveResult removeResult = template.removeById().inScope(scopeName).inCollection(collectionName)
+				.withOptions(options).one(saved.getId()).block();
 		assertEquals(saved.getId(), removeResult.getId());
 	}
 
 	@Test
 	public void removeByQuery() { // 8
 		QueryOptions options = QueryOptions.queryOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(scopeName).inCollection(collectionName)
-				.one(vie);
-		List<RemoveResult> removeResults = couchbaseTemplate.removeByQuery(Airport.class)
+		Airport saved = template.insertById(Airport.class).inScope(scopeName).inCollection(collectionName).one(vie).block();
+		List<RemoveResult> removeResults = template.removeByQuery(Airport.class)
 				.withConsistency(QueryScanConsistency.REQUEST_PLUS).inScope(scopeName).inCollection(collectionName)
-				.withOptions(options).matching(Query.query(QueryCriteria.where("iata").is(vie.getIata()))).all();
+				.withOptions(options).matching(Query.query(QueryCriteria.where("iata").is(vie.getIata()))).all().collectList()
+				.block();
 		assertEquals(saved.getId(), removeResults.get(0).getId());
 	}
 
@@ -492,16 +486,16 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 		InsertOptions insertOptions = InsertOptions.insertOptions().timeout(Duration.ofSeconds(10));
 		ReplaceOptions options = ReplaceOptions.replaceOptions().timeout(Duration.ofSeconds(10));
 		GetOptions getOptions = GetOptions.getOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(scopeName).inCollection(collectionName)
-				.withOptions(insertOptions).one(vie);
-		Airport replaced = couchbaseTemplate.replaceById(Airport.class).inScope(scopeName).inCollection(collectionName)
-				.withOptions(options).one(vie.withIcao("newIcao"));
+		Airport saved = template.insertById(Airport.class).inScope(scopeName).inCollection(collectionName)
+				.withOptions(insertOptions).one(vie).block();
+		Airport replaced = template.replaceById(Airport.class).inScope(scopeName).inCollection(collectionName)
+				.withOptions(options).one(vie.withIcao("newIcao")).block();
 		try {
-			Airport found = couchbaseTemplate.findById(Airport.class).inScope(scopeName).inCollection(collectionName)
-					.withOptions(getOptions).one(saved.getId());
+			Airport found = template.findById(Airport.class).inScope(scopeName).inCollection(collectionName)
+					.withOptions(getOptions).one(saved.getId()).block();
 			assertEquals(replaced, found);
 		} finally {
-			couchbaseTemplate.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId());
+			template.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId()).block();
 		}
 	}
 
@@ -510,14 +504,14 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 		UpsertOptions options = UpsertOptions.upsertOptions().timeout(Duration.ofSeconds(10));
 		GetOptions getOptions = GetOptions.getOptions().timeout(Duration.ofSeconds(10));
 
-		Airport saved = couchbaseTemplate.upsertById(Airport.class).inScope(scopeName).inCollection(collectionName)
-				.withOptions(options).one(vie);
+		Airport saved = template.upsertById(Airport.class).inScope(scopeName).inCollection(collectionName)
+				.withOptions(options).one(vie).block();
 		try {
-			Airport found = couchbaseTemplate.findById(Airport.class).inScope(scopeName).inCollection(collectionName)
-					.withOptions(getOptions).one(saved.getId());
+			Airport found = template.findById(Airport.class).inScope(scopeName).inCollection(collectionName)
+					.withOptions(getOptions).one(saved.getId()).block();
 			assertEquals(saved, found);
 		} finally {
-			couchbaseTemplate.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId());
+			template.removeById().inScope(scopeName).inCollection(collectionName).one(saved.getId()).block();
 		}
 	}
 
@@ -525,14 +519,14 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 	public void existsByIdOther() { // 1
 		GetOptions options = GetOptions.getOptions().timeout(Duration.ofSeconds(10));
 		ExistsOptions existsOptions = ExistsOptions.existsOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.one(vie);
+		Airport saved = template.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection).one(vie)
+				.block();
 		try {
-			Boolean exists = couchbaseTemplate.existsById().inScope(otherScope).inCollection(otherCollection)
-					.withOptions(existsOptions).one(saved.getId());
+			Boolean exists = template.existsById().inScope(otherScope).inCollection(otherCollection)
+					.withOptions(existsOptions).one(saved.getId()).block();
 			assertTrue(exists, "Airport should exist: " + saved.getId());
 		} finally {
-			couchbaseTemplate.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId());
+			template.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId()).block();
 		}
 	}
 
@@ -540,57 +534,56 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 	@Disabled // needs analytics data set
 	public void findByAnalyticsOther() { // 2
 		AnalyticsOptions options = AnalyticsOptions.analyticsOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.one(vie);
+		Airport saved = template.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection).one(vie)
+				.block();
 		try {
-			List<Airport> found = couchbaseTemplate.findByAnalytics(Airport.class).inScope(otherScope)
-					.inCollection(otherCollection).withOptions(options).all();
+			List<Airport> found = template.findByAnalytics(Airport.class).inScope(otherScope).inCollection(otherCollection)
+					.withOptions(options).all().collectList().block();
 			assertEquals(saved, found);
 		} finally {
-			couchbaseTemplate.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId());
+			template.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId()).block();
 		}
 	}
 
 	@Test
 	public void findByIdOther() { // 3
 		GetOptions options = GetOptions.getOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.one(vie);
+		Airport saved = template.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection).one(vie)
+				.block();
 		try {
-			Airport found = couchbaseTemplate.findById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-					.withOptions(options).one(saved.getId());
+			Airport found = template.findById(Airport.class).inScope(otherScope).inCollection(otherCollection)
+					.withOptions(options).one(saved.getId()).block();
 			assertEquals(saved, found);
 		} finally {
-			couchbaseTemplate.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId());
+			template.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId()).block();
 		}
 	}
 
 	@Test
 	public void findByQueryOther() { // 4
 		QueryOptions options = QueryOptions.queryOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.one(vie);
+		Airport saved = template.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection).one(vie)
+				.block();
 		try {
-			List<Airport> found = couchbaseTemplate.findByQuery(Airport.class)
-					.withConsistency(QueryScanConsistency.REQUEST_PLUS).inScope(otherScope).inCollection(otherCollection)
-					.withOptions(options).all();
+			List<Airport> found = template.findByQuery(Airport.class).withConsistency(QueryScanConsistency.REQUEST_PLUS)
+					.inScope(otherScope).inCollection(otherCollection).withOptions(options).all().collectList().block();
 			assertEquals(saved.getId(), found.get(0).getId());
 		} finally {
-			couchbaseTemplate.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId());
+			template.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId()).block();
 		}
 	}
 
 	@Test
 	public void findFromReplicasByIdOther() { // 5
 		GetAnyReplicaOptions options = GetAnyReplicaOptions.getAnyReplicaOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.one(vie);
+		Airport saved = template.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection).one(vie)
+				.block();
 		try {
-			Airport found = couchbaseTemplate.findFromReplicasById(Airport.class).inScope(otherScope)
-					.inCollection(otherCollection).withOptions(options).any(saved.getId());
+			Airport found = template.findFromReplicasById(Airport.class).inScope(otherScope).inCollection(otherCollection)
+					.withOptions(options).any(saved.getId()).block();
 			assertEquals(saved, found);
 		} finally {
-			couchbaseTemplate.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId());
+			template.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId()).block();
 		}
 	}
 
@@ -598,35 +591,36 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 	public void insertByIdOther() { // 6
 		InsertOptions options = InsertOptions.insertOptions().timeout(Duration.ofSeconds(10));
 		GetOptions getOptions = GetOptions.getOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.withOptions(options).one(vie.withId(UUID.randomUUID().toString()));
+		Airport saved = template.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
+				.withOptions(options).one(vie.withId(UUID.randomUUID().toString())).block();
 		try {
-			Airport found = couchbaseTemplate.findById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-					.withOptions(getOptions).one(saved.getId());
+			Airport found = template.findById(Airport.class).inScope(otherScope).inCollection(otherCollection)
+					.withOptions(getOptions).one(saved.getId()).block();
 			assertEquals(saved, found);
 		} finally {
-			couchbaseTemplate.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId());
+			template.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId()).block();
 		}
 	}
 
 	@Test
 	public void removeByIdOther() { // 7
 		RemoveOptions options = RemoveOptions.removeOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.one(vie);
-		RemoveResult removeResult = couchbaseTemplate.removeById().inScope(otherScope).inCollection(otherCollection)
-				.withOptions(options).one(saved.getId());
+		Airport saved = template.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection).one(vie)
+				.block();
+		RemoveResult removeResult = template.removeById().inScope(otherScope).inCollection(otherCollection)
+				.withOptions(options).one(saved.getId()).block();
 		assertEquals(saved.getId(), removeResult.getId());
 	}
 
 	@Test
 	public void removeByQueryOther() { // 8
 		QueryOptions options = QueryOptions.queryOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.one(vie);
-		List<RemoveResult> removeResults = couchbaseTemplate.removeByQuery(Airport.class)
+		Airport saved = template.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection).one(vie)
+				.block();
+		List<RemoveResult> removeResults = template.removeByQuery(Airport.class)
 				.withConsistency(QueryScanConsistency.REQUEST_PLUS).inScope(otherScope).inCollection(otherCollection)
-				.withOptions(options).matching(Query.query(QueryCriteria.where("iata").is(vie.getIata()))).all();
+				.withOptions(options).matching(Query.query(QueryCriteria.where("iata").is(vie.getIata()))).all().collectList()
+				.block();
 		assertEquals(saved.getId(), removeResults.get(0).getId());
 	}
 
@@ -635,16 +629,16 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 		InsertOptions insertOptions = InsertOptions.insertOptions().timeout(Duration.ofSeconds(10));
 		ReplaceOptions options = ReplaceOptions.replaceOptions().timeout(Duration.ofSeconds(10));
 		GetOptions getOptions = GetOptions.getOptions().timeout(Duration.ofSeconds(10));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.withOptions(insertOptions).one(vie);
-		Airport replaced = couchbaseTemplate.replaceById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.withOptions(options).one(vie.withIcao("newIcao"));
+		Airport saved = template.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
+				.withOptions(insertOptions).one(vie).block();
+		Airport replaced = template.replaceById(Airport.class).inScope(otherScope).inCollection(otherCollection)
+				.withOptions(options).one(vie.withIcao("newIcao")).block();
 		try {
-			Airport found = couchbaseTemplate.findById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-					.withOptions(getOptions).one(saved.getId());
+			Airport found = template.findById(Airport.class).inScope(otherScope).inCollection(otherCollection)
+					.withOptions(getOptions).one(saved.getId()).block();
 			assertEquals(replaced, found);
 		} finally {
-			couchbaseTemplate.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId());
+			template.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId()).block();
 		}
 	}
 
@@ -653,75 +647,75 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 		UpsertOptions options = UpsertOptions.upsertOptions().timeout(Duration.ofSeconds(10));
 		GetOptions getOptions = GetOptions.getOptions().timeout(Duration.ofSeconds(10));
 
-		Airport saved = couchbaseTemplate.upsertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.withOptions(options).one(vie);
+		Airport saved = template.upsertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
+				.withOptions(options).one(vie).block();
 		try {
-			Airport found = couchbaseTemplate.findById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-					.withOptions(getOptions).one(saved.getId());
+			Airport found = template.findById(Airport.class).inScope(otherScope).inCollection(otherCollection)
+					.withOptions(getOptions).one(saved.getId()).block();
 			assertEquals(saved, found);
 		} finally {
-			couchbaseTemplate.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId());
+			template.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId()).block();
 		}
 	}
 
 	@Test
 	public void existsByIdOptions() { // 1 - Options
 		ExistsOptions options = ExistsOptions.existsOptions().timeout(Duration.ofNanos(10));
-		assertThrows(UnambiguousTimeoutException.class, () -> couchbaseTemplate.existsById().inScope(otherScope)
-				.inCollection(otherCollection).withOptions(options).one(vie.getId()));
+		assertThrows(UnambiguousTimeoutException.class, () -> template.existsById().inScope(otherScope)
+				.inCollection(otherCollection).withOptions(options).one(vie.getId()).block());
 	}
 
 	@Test
 	@Disabled // needs analytics data set
 	public void findByAnalyticsOptions() { // 2
 		AnalyticsOptions options = AnalyticsOptions.analyticsOptions().timeout(Duration.ofNanos(10));
-		assertThrows(AmbiguousTimeoutException.class, () -> couchbaseTemplate.findByAnalytics(Airport.class)
-				.inScope(otherScope).inCollection(otherCollection).withOptions(options).all());
+		assertThrows(AmbiguousTimeoutException.class, () -> template.findByAnalytics(Airport.class).inScope(otherScope)
+				.inCollection(otherCollection).withOptions(options).all().collectList().block());
 	}
 
 	@Test
 	public void findByIdOptions() { // 3
 		GetOptions options = GetOptions.getOptions().timeout(Duration.ofNanos(10));
-		assertThrows(UnambiguousTimeoutException.class, () -> couchbaseTemplate.findById(Airport.class).inScope(otherScope)
-				.inCollection(otherCollection).withOptions(options).one(vie.getId()));
+		assertThrows(UnambiguousTimeoutException.class, () -> template.findById(Airport.class).inScope(otherScope)
+				.inCollection(otherCollection).withOptions(options).one(vie.getId()).block());
 	}
 
 	@Test
 	public void findByQueryOptions() { // 4
 		QueryOptions options = QueryOptions.queryOptions().timeout(Duration.ofNanos(10));
 		assertThrows(AmbiguousTimeoutException.class,
-				() -> couchbaseTemplate.findByQuery(Airport.class).withConsistency(QueryScanConsistency.REQUEST_PLUS)
-						.inScope(otherScope).inCollection(otherCollection).withOptions(options).all());
+				() -> template.findByQuery(Airport.class).withConsistency(QueryScanConsistency.REQUEST_PLUS).inScope(otherScope)
+						.inCollection(otherCollection).withOptions(options).all().collectList().block());
 	}
 
 	@Test
 	public void findFromReplicasByIdOptions() { // 5
 		GetAnyReplicaOptions options = GetAnyReplicaOptions.getAnyReplicaOptions().timeout(Duration.ofNanos(1000));
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.one(vie);
+		Airport saved = template.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection).one(vie)
+				.block();
 		try {
-			Airport found = couchbaseTemplate.findFromReplicasById(Airport.class).inScope(otherScope)
-					.inCollection(otherCollection).withOptions(options).any(saved.getId());
+			Airport found = template.findFromReplicasById(Airport.class).inScope(otherScope).inCollection(otherCollection)
+					.withOptions(options).any(saved.getId()).block();
 			assertNull(found, "should not have found document in short timeout");
 		} finally {
-			couchbaseTemplate.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId());
+			template.removeById().inScope(otherScope).inCollection(otherCollection).one(saved.getId()).block();
 		}
 	}
 
 	@Test
 	public void insertByIdOptions() { // 6
 		InsertOptions options = InsertOptions.insertOptions().timeout(Duration.ofNanos(10));
-		assertThrows(AmbiguousTimeoutException.class, () -> couchbaseTemplate.insertById(Airport.class).inScope(otherScope)
-				.inCollection(otherCollection).withOptions(options).one(vie.withId(UUID.randomUUID().toString())));
+		assertThrows(AmbiguousTimeoutException.class, () -> template.insertById(Airport.class).inScope(otherScope)
+				.inCollection(otherCollection).withOptions(options).one(vie.withId(UUID.randomUUID().toString())).block());
 	}
 
 	@Test
 	public void removeByIdOptions() { // 7 - options
-		Airport saved = couchbaseTemplate.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection)
-				.one(vie);
+		Airport saved = template.insertById(Airport.class).inScope(otherScope).inCollection(otherCollection).one(vie)
+				.block();
 		RemoveOptions options = RemoveOptions.removeOptions().timeout(Duration.ofNanos(10));
-		assertThrows(AmbiguousTimeoutException.class, () -> couchbaseTemplate.removeById().inScope(otherScope)
-				.inCollection(otherCollection).withOptions(options).one(vie.getId()));
+		assertThrows(AmbiguousTimeoutException.class, () -> template.removeById().inScope(otherScope)
+				.inCollection(otherCollection).withOptions(options).one(vie.getId()).block());
 
 	}
 
@@ -729,23 +723,23 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 	public void removeByQueryOptions() { // 8 - options
 		QueryOptions options = QueryOptions.queryOptions().timeout(Duration.ofNanos(10));
 		assertThrows(AmbiguousTimeoutException.class,
-				() -> couchbaseTemplate.removeByQuery(Airport.class).withConsistency(QueryScanConsistency.REQUEST_PLUS)
+				() -> template.removeByQuery(Airport.class).withConsistency(QueryScanConsistency.REQUEST_PLUS)
 						.inScope(otherScope).inCollection(otherCollection).withOptions(options)
-						.matching(Query.query(QueryCriteria.where("iata").is(vie.getIata()))).all());
+						.matching(Query.query(QueryCriteria.where("iata").is(vie.getIata()))).all().collectList().block());
 	}
 
 	@Test
 	public void replaceByIdOptions() { // 9 - options
 		ReplaceOptions options = ReplaceOptions.replaceOptions().timeout(Duration.ofNanos(10));
-		assertThrows(AmbiguousTimeoutException.class, () -> couchbaseTemplate.replaceById(Airport.class).inScope(otherScope)
-				.inCollection(otherCollection).withOptions(options).one(vie.withIcao("newIcao")));
+		assertThrows(AmbiguousTimeoutException.class, () -> template.replaceById(Airport.class).inScope(otherScope)
+				.inCollection(otherCollection).withOptions(options).one(vie.withIcao("newIcao")).block());
 	}
 
 	@Test
 	public void upsertByIdOptions() { // 10 - options
 		UpsertOptions options = UpsertOptions.upsertOptions().timeout(Duration.ofNanos(10));
-		assertThrows(AmbiguousTimeoutException.class, () -> couchbaseTemplate.upsertById(Airport.class).inScope(otherScope)
-				.inCollection(otherCollection).withOptions(options).one(vie));
+		assertThrows(AmbiguousTimeoutException.class, () -> template.upsertById(Airport.class).inScope(otherScope)
+				.inCollection(otherCollection).withOptions(options).one(vie).block());
 	}
 
 }

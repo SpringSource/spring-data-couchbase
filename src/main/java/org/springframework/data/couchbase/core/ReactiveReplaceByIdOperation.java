@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors
+ * Copyright 2012-2021 the original author or authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,11 +21,14 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.util.Collection;
 
+import org.springframework.data.couchbase.core.support.InCollection;
+import org.springframework.data.couchbase.core.support.InScope;
 import org.springframework.data.couchbase.core.support.OneAndAllEntityReactive;
-import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithReplaceOptions;
 
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
 import com.couchbase.client.java.kv.PersistTo;
+import com.couchbase.client.java.kv.ReplaceOptions;
 import com.couchbase.client.java.kv.ReplicateTo;
 
 public interface ReactiveReplaceByIdOperation {
@@ -40,16 +43,23 @@ public interface ReactiveReplaceByIdOperation {
 
 	}
 
-	interface ReplaceByIdWithCollection<T> extends TerminatingReplaceById<T>, WithCollection<T> {
-
-		TerminatingReplaceById<T> inCollection(String collection);
+	interface ReplaceByIdWithOptions<T> extends TerminatingReplaceById<T>, WithReplaceOptions<RemoveResult> {
+		TerminatingReplaceById<T> withOptions(ReplaceOptions options);
 	}
 
-	interface ReplaceByIdWithDurability<T> extends ReplaceByIdWithCollection<T>, WithDurability<T> {
+	interface ReplaceByIdInCollection<T> extends ReplaceByIdWithOptions<T>, InCollection<Object> {
+		ReplaceByIdWithOptions<T> inCollection(String collection);
+	}
 
-		ReplaceByIdWithCollection<T> withDurability(DurabilityLevel durabilityLevel);
+	interface ReplaceByIdInScope<T> extends ReplaceByIdInCollection<T>, InScope<Object> {
+		ReplaceByIdInCollection<T> inScope(String scope);
+	}
 
-		ReplaceByIdWithCollection<T> withDurability(PersistTo persistTo, ReplicateTo replicateTo);
+	interface ReplaceByIdWithDurability<T> extends ReplaceByIdInScope<T>, WithDurability<T> {
+
+		ReplaceByIdInCollection<T> withDurability(DurabilityLevel durabilityLevel);
+
+		ReplaceByIdInCollection<T> withDurability(PersistTo persistTo, ReplicateTo replicateTo);
 
 	}
 

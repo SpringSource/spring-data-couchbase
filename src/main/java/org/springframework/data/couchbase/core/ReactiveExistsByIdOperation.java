@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors
+ * Copyright 2012-2021 the original author or authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,12 @@ import reactor.core.publisher.Mono;
 import java.util.Collection;
 import java.util.Map;
 
+import org.springframework.data.couchbase.core.support.InCollection;
+import org.springframework.data.couchbase.core.support.InScope;
 import org.springframework.data.couchbase.core.support.OneAndAllExistsReactive;
-import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithExistsOptions;
+
+import com.couchbase.client.java.kv.ExistsOptions;
 
 public interface ReactiveExistsByIdOperation {
 
@@ -50,17 +54,18 @@ public interface ReactiveExistsByIdOperation {
 
 	}
 
-	interface ExistsByIdWithCollection extends TerminatingExistsById, WithCollection {
-
-		/**
-		 * Allows to specify a different collection than the default one configured.
-		 *
-		 * @param collection the collection to use in this scope.
-		 */
-		TerminatingExistsById inCollection(String collection);
-
+	interface ExistsByIdWithOptions extends TerminatingExistsById, WithExistsOptions {
+		TerminatingExistsById withOptions(ExistsOptions options);
 	}
 
-	interface ReactiveExistsById extends ExistsByIdWithCollection {}
+	interface ExistsByIdInCollection extends ExistsByIdWithOptions, InCollection {
+		ExistsByIdWithOptions inCollection(String collection);
+	}
+
+	interface ExistsByIdInScope extends ExistsByIdInCollection, InScope {
+		ExistsByIdInCollection inScope(String scope);
+	}
+
+	interface ReactiveExistsById extends ExistsByIdInScope {}
 
 }
